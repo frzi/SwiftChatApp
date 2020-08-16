@@ -11,9 +11,11 @@
 * [Creating the app](#creating-the-app)
 	* [Connecting to the server](#connecting-to-the-server)
 	* [Testing disconnection](#testing-disconnection)
-* [Sending messages](#sending-messages)
+* [Sending and receiving messages](#sending-and-receiving-messages)
 	* [Server-side](#server-side)
-	* [Client-side](#app-side)
+	* [Sending client-side](#sending-client-side)
+	* [Receiving client-side](#receiving-client-side)
+	* [Autoscrolling](#autoscrolling)
 * [Add user information](#add-user-information)
 * [Looking back](#looking-back)
 * [Final words](#final-words)
@@ -295,7 +297,7 @@ final class ChatScreenModel: ObservableObject {
 	}
 
 	private func onReceive(incoming: Result<URLSessionWebSocketTask.Message, Error>) {
-		webSocketTask?.receive(completionHandler: onReceive)
+		// Nothing yet...
 	}
 	
 	deinit { // 9
@@ -357,7 +359,7 @@ struct ChatScreen: View {
 > 	model.connect()	
 > }
 > ```
-> This is nothing but a personal preference. Personally I like to define these methods separately. Yes, it costs more space. But they're easier to find, prevent the `body` from getting (more) cluttered and are arguably easier to fold. 🙂
+> This is nothing but a personal preference. Personally I like to define these methods separately. Yes, it costs more space. But they're easier to find, are reusable, prevent the `body` from getting (more) cluttered and are arguably easier to fold. 🙂
 
 By the same token, we should also disconnect when the view disappears. The implementation should be self explanatory, but just in case:
 ```swift
@@ -380,7 +382,7 @@ struct ChatScreen: View {
 
 It's very important to close WebSocket connections whenever we stop caring about them. When you (gracefully) close a WebSocket connection, the server will be informed and can purge the connection from memory. The server should _never_ have dead or unknown connections lingering in memory.
 
-Phew. Quite a ride we've been through so far. Time to test it out. ▶️ Start the app! (Use Simulator if you're testing for iOS.) Make sure you still have the server running in your other Xcode window. When the app has successfully started and is displaying `ChatScreen`, you should see the `Connected: WebSocketKit.WebSocket` message in the Xcode console of the server. If not, retrace your steps and start debugging!
+Phew. Quite a ride we've been through so far. Time to test it out. ▶️ Run the app! (Use Simulator if you're testing for iOS.) Make sure you still have the server running in your other Xcode window. When the app has successfully started and is displaying `ChatScreen`, you should see the `Connected: WebSocketKit.WebSocket` message in the Xcode console of the server. If not, retrace your steps and start debugging!
 
 ### Testing disconnection
 One more thing™️. We should also test whether the WebSocket connection is closed when the user closes the app (or leaves `ChatScreen`). Head back to the `main.swift` file of the server project. Currently our WebSocket listener looks like this:
@@ -400,11 +402,9 @@ app.webSocket("chat") { req, client in
 	}
 }
 ```
-We'll go through the details of `client` later on. For now we just want to test the WebSocket connection actually closing.
-
 Re-run the server and start the chat app. Once the app is connected, close the app (actually exit it, don't just put it in the background). The Xcode console of the server should now print `Disconnected: WebSocketKit.WebSocket`. This confirms that WebSocket connections are indeed closed when we no longer care  about them. Thus the server should have no dead connections lingering in memory.
 
-## Sending messages
+## Sending and receiving messages
 You ready to actually send something to the server? Boy, I sure am. But just for a moment, let's put on the brakes and think for a second. Lean back in the chair and stare aimlessly, yet somehow purposefully at the ceiling... 
 
 ***What*** exactly will be we sending to the server? And, just as importantly, ***what*** will we be receiving back from the server?
@@ -520,7 +520,7 @@ Yes, this includes sending it to the original sender as well.
 
 Done! The server is ready to recieve messages and pass them along to other connected clients. Run the server and let it idle in the background, as we continue with the app!
 
-### Client-side
+### Sending client-side
 Rmemeber those `SubmittedChatMessage` and `ReceivingChatMessage` structs we made for the server? We need them for the app as well. Create a new Swift file and name it `Models.swift`. Though you could just copy-paste the implementations, they will require a bit of modification:
 ```swift
 import Foundation
@@ -579,6 +579,120 @@ private func onCommit() {
 }
 ```
 This method will be called when the user either presses the submit button or when pressing Return on the keyboard. Though it'll only send the message if it _actually contains anything_.
+
+In the `.body` of `ChatScreen`, locate the `TextField` and `Button`, then replace them (but not their modifiers or contents) with the following initializations:
+```swift
+TextField("Message", text: $message, onEditingChanged: { _ in }, onCommit: onCommit)
+	// .modifiers here
+
+Button(action: onCommit) {
+	// Image etc
+}
+// .modifiers here
+```
+When the Return key is pressed while the `TextField` is focused, `onCommit` will be called. Same goes for when the `Button` is pressed by the user. `TextField` also requires an `onEditingChanged` argument - but we discard that by giving it an empty closure.
+
+Now is the time to start testing what we have. Make sure the server is still running in the background. Place some breakpoints in the `client.onText` closure (where the server reads incoming messages) in `main.swift` of the server. Run the app and send a message. The breakpoint(s) in `main.swift` _should_ be hit upon receiving a message from the app. If it did, 🎊 _~lush~_! 🎊 If not, well... retrace your steps and start debugging!
+
+### Receiving client-side
+Sending messages is cute and all. But what about receiving them? (Well, technically we are receiving them, just never reacting to them.) Right you are!
+
+Let's visit `ChatScreenModel` once more. Remember that `onReceive(incoming:)` method? Replace it and give it a sibling method as shown below:
+```swift
+private func onReceive(incoming: Result<URLSessionWebSocketTask.Message, Error>) {
+	webSocketTask?.receive(completionHandler: onReceive) // 1
+
+	if case .success(let message) = incoming { // 2
+		onMessage(message: message)
+	}
+	else if case .failure(let error) = incoming { // 3
+		print("Error", error)
+	}
+}
+
+private func onMessage(message: URLSessionWebSocketTask.Message) { // 4
+	if case .string(let text) = message { // 5
+		guard let data = text.data(using: .utf8),
+				let chatMessage = try? JSONDecoder().decode(ReceivingChatMessage.self, from: data)
+		else {
+			return
+		}
+
+		DispatchQueue.main.async { // 6
+			self.messages.append(chatMessage)
+		}
+	}
+}
+```
+So...
+1. Those receive handlers we bind to `URLSessionWebSocketTask`? They only work once. Thus, we instantly rebind a new handler, so we're ready to read the next incoming message.
+2. If successful, we pick out the contents of the message and let another method deal with it further.
+3. If not successful, simply print an error to the console.
+4. This method is responsible for parsing the incoming (successful) message.
+5. A WebSocket message can be either binary or text. So far we've been sending JSONs back and forther - which _are_ text formats (more on this later). Thus we only handle messages containing strings. Afterwards we decode the data to `ReceivingChatMessage`.
+6. Plop the decoded message into `self.messages`. _However_, because `URLSessionWebSocketTask` can call the receive handler on a different thread, and because SwiftUI only works on the main thread, we have to wrap our modification in a `DispatchQueue.main.async {}`, assuring we're actually performing the modification on the main thread.
+
+> Explaining the hows and whys of working with different threads in SwiftUI is beyond the scope of this tutorial.
+
+Nearly there!
+
+Check back in on `ChatScreen.swift`. See that empty `ScrollView`? We can _finally_ populate it with messages:
+```swift
+ScrollView{
+	LazyVStack(spacing: 8) {
+		ForEach(model.messages) { message in
+			Text(message.message)
+		}
+	}
+}
+```
+It's not going to look spectacular by any means. But this'll do the job for now. We simply represent every message with a plain o' `Text`.
+
+Go ahead, run the app. When you send a message, it should instantly appear on the screen. This confirms the message was successfully sent to the server, and the server successfully sent it back to the app! Now, if you can, open up multiple instances of the app (tip: use different Simulators). There's virtually no limit to the amount of clients! Have a nice big chat party all by yourself.
+
+Keep sending messages until there's no room left on the screen. Notice anything? Yarp. The `ScrollView` doesn't automatically scroll to the bottom once new messages are beyond the screen's bounds. 😟
+
+Enter...
+
+## Autoscrolling
+Remember, the server generates a unique identifier for each message. We can finally put it to good use! The wait was worth it for this incredible payoff, I assure you.
+
+In `ChatScreen`, turn the `ScrollView` into this beauty:
+```swift
+ScrollView {
+	ScrollViewReader{ proxy in // 1
+		LazyVStack(spacing: 8) {
+			ForEach(model.messages) { message in
+				Text(message.message)
+					.id(message.id) // 2
+			}
+		}
+		.onChange(of: model.messages.count) { _ in // 3
+			scrollToLastMessage(proxy: proxy)
+		}
+	}
+}
+```
+Then add the following method:
+```swift
+private func scrollToLastMessage(proxy: ScrollViewProxy) {
+	if let lastMessage = model.messages.last { // 4
+		withAnimation(.easeOut(duration: 0.4)) {
+			proxy.scrollTo(lastMessage.id, anchor: .bottom) // 5
+		}
+	}
+}
+```
+1. We're wrapping the contents of the `ScrollView` in a `ScrollViewReader`.  
+The `ScrollViewReader` provides us with a `proxy` that we'll need very soon.
+2. Give each message a unique identifier (simply using the message's identifier).
+3. Keep track of changes to `model.messages.count`. When this value changes, we call the method we just added, passing it the `proxy` provided by `ScrollViewReader`.
+4. Safely get the latest message.
+5. Call the `.scrollTo(_:anchor:)` method of the `ScrollViewProxy`. This tells the `ScrollView` to scroll to the View with the given identifier. We wrap this in `withAnimation {}` to animate the scrolling.
+
+_Et voilà..._
+
+-gif here-
 
 ## Add user information
 

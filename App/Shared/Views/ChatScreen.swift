@@ -48,8 +48,10 @@ struct ChatScreen: View {
 				ScrollViewReader{ proxy in
 					LazyVStack(spacing: 8) {
 						ForEach(model.messages) { message in
-							ChatMessageRow(message: message, isUser: message.userID == userID)
+							//ChatMessageRow(message: message, isUser: message.userID == userID)
+							Text(message.message)
 								.id(message.id)
+								.font(.system(size: 20))
 						}
 					}
 					.padding(10)
@@ -135,7 +137,7 @@ private final class ChatScreenModel: ObservableObject {
 	private(set) var userID: String?
 	
 	private var webSocketTask: URLSessionWebSocketTask?
-
+	
 	@Published private(set) var messages: [ReceivingChatMessage] = []
 
 	// MARK: - Connection
