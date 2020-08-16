@@ -1,8 +1,6 @@
 # A simple chat app with SwiftUI and WebSockets - or: Swift in the back, Swift in the front!
 > Creating a very primitive chat app in SwiftUI, while using Swift and WebSockets to create the chat server. It's Swift all the way down!
 
-Tags: Swift, SwiftUI, Vapor, WebSockets, chat
-
 ## Index
 * [Introduction](#introduction)
 	* [Quick summary of what's to come](#quick-summary-of-whats-to-come)
@@ -12,7 +10,10 @@ Tags: Swift, SwiftUI, Vapor, WebSockets, chat
 	* [Writing some actual code](#writing-some-actual-code)
 * [Creating the app](#creating-the-app)
 	* [Connecting to the server](#connecting-to-the-server)
-* [Send messages](#send-messages)
+	* [Testing disconnection](#testing-disconnection)
+* [Sending messages](#sending-messages)
+	* [Server-side](#server-side)
+	* [Client-side](#app-side)
 * [Add user information](#add-user-information)
 * [Looking back](#looking-back)
 * [Final words](#final-words)
@@ -28,7 +29,7 @@ This tutorial assumes you already have a bit of experience developing iOS/macOS 
 If none of that interests you, you can always scroll to the end and download the final source code!
 
 ### Quick summary of what's to come
-In short, we will start by making a very simple, plain, featureless server. We'll build the server as a Swift Package, then add the [Vapor web framework](https://github.com/vapor/vapor/) as a dependency. This will help use setup a WebSocket server with just a few lines of code.
+In short, we will start by making a very simple, plain, featureless server. We'll build the server as a Swift Package, then add the [Vapor web framework](https://github.com/vapor/vapor/) as a dependency. This will help us setup a WebSocket server with just a few lines of code.
 
 Afterwards we will start building the frontend chat app. Quickly starting with the basics, then adding features (and necessities) one by one.
 
@@ -262,7 +263,7 @@ If you wish to make different design choices, go right ahead. 🙂
 ### Connecting to the server
 Now let's start working on some non-UI related logic: connecting to the very server we just made.
 
-_SwiftUI_, together with the _Combine_ framework, provides developers with tools to implement [Seperation of Concerns](https://en.wikipedia.org/wiki/Separation_of_concerns) effortlessly in their code. Using the `ObservableObject` protocol and `@StateObject` (or `@ObservedObject`) property wrappers we can implement non-UI logic (referred to as [_Business Logic_](https://en.wikipedia.org/wiki/Business_logic)) a in separate place. As things should be! Afterall, the only thing the UI should care about is displaying data to the user and reacting to user input. It shouldn't care where the data comes from, or how it's manipulated.
+_SwiftUI_, together with the _Combine_ framework, provides developers with tools to implement [Seperation of Concerns](https://en.wikipedia.org/wiki/Separation_of_concerns) effortlessly in their code. Using the `ObservableObject` protocol and `@StateObject` (or `@ObservedObject`) property wrappers we can implement non-UI logic (referred to as [_Business Logic_](https://en.wikipedia.org/wiki/Business_logic)) in a separate place. As things should be! Afterall, the only thing the UI should care about is displaying data to the user and reacting to user input. It shouldn't care where the data comes from, or how it's manipulated.
 
 Coming from a [React](https://reactjs.org/) background, this luxury is something I'm incredibly envious of.
 
@@ -318,9 +319,220 @@ Whenever a message is received from the server, the method `onReceive(incoming:)
 With WebSockets, you have the option to inform the server _why_ a client disconnected. With optional additional data provided.
 8. Make sure we gracefully disconnect when the `ChatScreenModel` is released from memory.
 
-This is a great start. We now have a place where we can put all our WebSocket logic without bothering the UI. It's time to have `ChatScreen` communicate with `ChatScreenModel`.
+This is a great start. We now have a place where we can put all our WebSocket logic without cluttering the UI code. It's time to have `ChatScreen` communicate with `ChatScreenModel`.
 
-## Send messages
+Add the `ChatScreenModel` as a State Object in `ChatScreen`:
+```swift
+struct ChatScreen: View {
+	@StateObject private var model = ChatScreenModel() // <- this here
+	@State private var message = ""
+	
+	// etc...
+}
+```
+
+When should we connect to the server? Well, when the screen is _actually_ visible, of course. You may be tempted to call `.connect()` in the `init()` of `ChatScreen`. This is a dangerous thing. In fact, in SwiftUI one should try to avoid putting anything the `init()`, as the View can be initialized even when it will never appear. (For instance in `LazyVStack` or in `NavigationLink(destination:)`.) It'd be a shame to waste precious CPU cycles. Therefore, let's defer everything to `onAppear`.
+
+Add an `onAppear` method to `ChatScreen`. Then add and pass that method to the `.onAppear(perform:)` modifier of `VStack`:
+```swift
+struct ChatScreen: View {
+	// ...
+
+	private func onAppear() {
+		model.connect()
+	}
+
+	var body: some View {
+		VStack {
+			// ...
+		}
+		.onAppear(perform: onAppear)
+	}
+}
+```
+> #### Wasted space?
+> Plenty of people prefer to write the contents of these methods inline instead:
+> ```swift
+> .onAppear {
+> 	model.connect()	
+> }
+> ```
+> This is nothing but a personal preference. Personally I like to define these methods separately. Yes, it costs more space. But they're easier to find, prevent the `body` from getting (more) cluttered and are arguably easier to fold. 🙂
+
+By the same token, we should also disconnect when the view disappears. The implementation should be self explanatory, but just in case:
+```swift
+struct ChatScreen: View {
+	// ...
+
+	private func onDisappear() {
+		model.disconnect()
+	}
+
+	var body: some View {
+		VStack {
+			// ...
+		}
+		.onAppear(perform: onAppear)
+		.onDisappear(perform: onDisappear)
+	}
+}
+```
+
+It's very important to close WebSocket connections whenever we stop caring about them. When you (gracefully) close a WebSocket connection, the server will be informed and can purge the connection from memory. The server should _never_ have dead or unknown connections lingering in memory.
+
+Phew. Quite a ride we've been through so far. Time to test it out. ▶️ Start the app! (Use Simulator if you're testing for iOS.) Make sure you still have the server running in your other Xcode window. When the app has successfully started and is displaying `ChatScreen`, you should see the `Connected: WebSocketKit.WebSocket` message in the Xcode console of the server. If not, retrace your steps and start debugging!
+
+### Testing disconnection
+One more thing™️. We should also test whether the WebSocket connection is closed when the user closes the app (or leaves `ChatScreen`). Head back to the `main.swift` file of the server project. Currently our WebSocket listener looks like this:
+
+```swift
+app.webSocket("chat") { req, client in
+	print("Connected:", client)
+}
+```
+Add a handler to the `.onClose` of `client`, performing nothing but a simple `print()`:
+```swift
+app.webSocket("chat") { req, client in
+	print("Connected:", client)
+
+	client.onClose.whenComplete { _ in
+		print("Disconnected:", client)
+	}
+}
+```
+We'll go through the details of `client` later on. For now we just want to test the WebSocket connection actually closing.
+
+Re-run the server and start the chat app. Once the app is connected, close the app (actually exit it, don't just put it in the background). The Xcode console of the server should now print `Disconnected: WebSocketKit.WebSocket`. This confirms that WebSocket connections are indeed closed when we no longer care  about them. Thus the server should have no dead connections lingering in memory.
+
+## Sending messages
+You ready to actually send something to the server? Boy, I sure am. But just for a moment, let's put on the brakes and think for a second. Lean back in the chair and stare aimlessly, yet somehow purposefully at the ceiling... 
+
+***What*** exactly will be we sending to the server? And, just as importantly, ***what*** will we be receiving back from the server?
+
+Your first thought may be "Well, just text, right?", you'd be half right. But what about the time of the message? What about the sender's name? What about an identifier to make the message unique from any other message? We don't have anything for the user to create a username or anything just yet. So let's put that to the side and just focus on sending and receiving messages.
+
+We're going to have to make some adjustments on both the app- and server-side. Let's start with the server.
+
+### Server-side
+Create a new Swift file in `Sources/ChatServer` called `Models.swift` in the server project. Paste (or type) the following code into `Models.swift`:
+```swift
+import Foundation
+
+struct SubmittedChatMessage: Decodable { // 1
+	let message: String
+}
+
+struct ReceivingChatMessage: Encodable, Identifiable { // 2
+	let date = Date() // 3
+	let id = UUID() // 4
+	let message: String // 5
+}
+```
+Here's what's going on:
+1. This will be the data the server receives from individual clients when they send a message. For now, it's just a message (String). Username et al will be added later on. Because we're only receiving this type of data, we only need to decode it. Hence the `Decodable` protocol.
+2. This will be the data sent to indiviual clients. Because we only have to encode it, it's conforming to the `Encodable` protocol.
+3. The date of the message. This will be automatically generated when initializing a `ReceivingChatMessage`.
+4. A unique identifier for the message. Just like the date, this too will be automatically generated.
+5. The message received earlier, now being sent to all the clients connected to the server.
+
+Do note how we're generating the `date` and `id` on the server-side. This makes the server the [Source of Truth](https://en.wikipedia.org/wiki/Single_source_of_truth). The server knows what time it is. If the date were to be generated on the client-side, it cannot be trusted. What if the client has their clock setup to be in the future? Having the server generate the date makes its clock the _only_ reference to time.
+
+> #### Timezones?
+> Swift's [`Date`](https://developer.apple.com/documentation/foundation/date) object always has [00:00:00 UTC 01-01-2001](https://developer.apple.com/documentation/foundation/nsdate) as absolute reference time. When initializing a `Date` or format one to string (e.g. via `DateFormatter`), the client's locality will be taken into consideration automatically. Adding or subtracting hours depending on the client's timezone.
+
+We also don't want the client to send multiple messages with the same unique identifier. Whether accidentally or pursposefully meliciously. Having the server generate this identifier is one extra layer of security and less possible sources of errors.
+
+Now then. When the server receives a message from a client, it should pass it along to every other client. This does, however, mean we have to keep track of every client that's connected.
+
+Back to `main.swift` of the server project. Right above `app.webSocket("chat")` put the following declaration:
+```swift
+var clientConnections = Set<WebSocket>()
+```
+This is where we'll store our client connections.
+
+**But wait**... You _should_ be getting a big, bad, nasty compile error. That's because the `WebSocket` object does not conform to the `Hashable` protocol by default. No worries though, this can be easily (albeit cheapishly) implemented. Add the following code at the very bottom of `main.swift`:
+```swift
+extension WebSocket: Hashable {
+	public static func == (lhs: WebSocket, rhs: WebSocket) -> Bool {
+		ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
+	}
+	
+	public func hash(into hasher: inout Hasher) {
+		hasher.combine(ObjectIdentifier(self))
+	}
+}
+```
+Badabing badaboom. The above code is a quick but simple way to make a `class` conform to `Hashable` (and by definition also `Equatable`), by simply using its memory address as a unique property. **Note**: this only works for classes. Structs will require a little more hands-on implementation.
+
+Alright, so now that we're able to keep track of clients, replace everything of `app.webSocket("chat")` (including its closure _and_ its contents) with the following code 👇:
+```swift
+app.webSocket("chat") { req, client in
+	clientConnections.insert(client)
+	
+	client.onClose.whenComplete { _ in
+		clientConnections.remove(client)
+	}
+}
+```
+When a client connects, store said client into `clientConnections`. When the client disconnects, remove it from the same `Set`. Ezpz.
+
+The final step in this chapter is adding the _heart_ of the server↔️app communication. Below the entirety of `client.onClose.whenComplete` - but still inside the `app.webSocket("chat")` closure - add the following snippet of code:
+```swift
+client.onText { _, text in // 1
+	do {
+		guard let data = text.data(using: .utf8) else {
+			return
+		}
+
+		let incomingMessage = try JSONDecoder().decode(SubmittedChatMessage.self, from: data) // 2
+		let outgoingMessage = ReceivingChatMessage(message: incomingMessage.message) // 3
+		let json = try JSONEncoder().encode(outgoingMessage) // 4
+		
+		guard let jsonString = String(data: json, encoding: .utf8) else {
+			return
+		}
+
+		for connection in clientConnections {
+			connection.send(jsonString) // 5
+		}
+	}
+	catch {
+		print(error) // 6
+	}
+}
+```
+Again, from the top:
+1. Bind an `.onText` handler to the connected client.  
+Everytime the server receives text from this client, this handler will be called. Here we have the opportunity to parse and validate the incoming text.
+2. Decode the incoming message.  
+This will be our validation step. We don't want to continue if the client sends unacceptable payloads.
+3. Initialize a `ReceivingChatMessage` with the message received from the client.  
+Remember that the date and unique identifier of `ReceivingChatMessage` will be generated automatically.
+4. Encode the `ReceivingChatMessage` to a JSON string (well, as `Data`).
+5. Send the encoded JSON string to every client.  
+Yes, this includes sending it to the original sender as well.
+
+> #### Why send it back?
+> We can use this as a confirmation that the message was, in fact, received sucessfully from the client. The app will receive back the message just like it'd receive any other message. This will prevent us from having to write additional code later on.
+
+Done! The server is ready to recieve messages and pass them along to other connected clients. Run the server and let it idle in the background, as we continue with the app!
+
+### Client-side
+Rmemeber those `SubmittedChatMessage` and `ReceivingChatMessage` structs we made for the server? We need them for the app as well. Create a new Swift file and name it `Models.swift`. Though you could just copy-paste the implementations, they will require a bit of modification:
+```swift
+import Foundation
+
+struct SubmittedChatMessage: Encodable {
+	let message: String
+}
+
+struct ReceivingChatMessage: Decodable, Identifiable {
+	let date: Date
+	let id: UUID
+	let message: String
+}
+```
+Notice how the `Encodable` and `Decodable` protocols have been swapped. It only makes sense: in the app, we only encode `SubmittedChatMessage`, and only decode `ReceivingChatMessage`. The opposite of the server. We also removed the automatic initializations of `date` and `id`. The app has no business generating these.
 
 ## Add user information
 

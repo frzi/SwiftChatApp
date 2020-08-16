@@ -89,7 +89,7 @@ private struct ChatMessageRow: View {
 		return formatter
 	}()
 	
-	let message: ChatMessage
+	let message: ReceivingChatMessage
 	let isUser: Bool
 	
 	var body: some View {
@@ -138,7 +138,7 @@ private final class ChatScreenModel: ObservableObject {
 	
 	private var webSocketTask: URLSessionWebSocketTask?
 
-	@Published private(set) var messages: [ChatMessage] = []
+	@Published private(set) var messages: [ReceivingChatMessage] = []
 
 	// MARK: - Connection
 	func connect(username: String, userID id: String) {
@@ -170,7 +170,7 @@ private final class ChatScreenModel: ObservableObject {
 	private func onMessage(message: URLSessionWebSocketTask.Message) {
 		if case .string(let text) = message {
 			guard let data = text.data(using: .utf8),
-				  let chatMessage = try? Self.decoder.decode(ChatMessage.self, from: data)
+				  let chatMessage = try? Self.decoder.decode(ReceivingChatMessage.self, from: data)
 			else {
 				return
 			}
@@ -190,7 +190,7 @@ private final class ChatScreenModel: ObservableObject {
 			return
 		}
 		
-		let message = ChatMessage(message: text, user: username, userID: userID)
+		let message = SubmittedChatMessage(message: text, user: username, userID: userID)
 		guard let json = try? Self.encoder.encode(message),
 			  let jsonString = String(data: json, encoding: .utf8)
 		else {

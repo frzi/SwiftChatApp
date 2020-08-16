@@ -7,9 +7,15 @@
 
 import Foundation
 
-struct ChatMessage: Codable, Identifiable {
-	private(set) var id = UUID()
-	private(set) var date = Date()
+struct SubmittedChatMessage: Decodable {
+	let message: String
+	let user: String
+	let userID: String
+}
+
+struct ReceivingChatMessage: Encodable, Identifiable {
+	let date = Date()
+	let id = UUID()
 	let message: String
 	let user: String
 	let userID: String

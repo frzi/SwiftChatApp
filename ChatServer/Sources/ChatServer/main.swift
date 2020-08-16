@@ -11,6 +11,7 @@ defer {
 }
 
 let decoder = JSONDecoder()
+let encoder = JSONEncoder()
 var clientConnections = Set<WebSocket>()
 
 app.webSocket("chat") { req, client in
@@ -18,26 +19,37 @@ app.webSocket("chat") { req, client in
 
 	clientConnections.insert(client)
 	
+	client.onClose.whenComplete { _ in
+		print("Disconnected:", client)
+		clientConnections.remove(client)
+	}
+	
 	client.onText { ws, text in
 		do {
-			// Test if we're actually getting a valid `ChatMessage`.
 			guard let data = text.data(using: .utf8) else {
 				return
 			}
 
-			let _ = try decoder.decode(ChatMessage.self, from: data)
+			let incomingMessage = try decoder.decode(SubmittedChatMessage.self, from: data)
+
+			let outgoingMessage = ReceivingChatMessage(
+				message: incomingMessage.message,
+				user: incomingMessage.user,
+				userID: incomingMessage.userID)
+			
+			let json = try encoder.encode(outgoingMessage)
+			
+			guard let jsonString = String(data: json, encoding: .utf8) else {
+				return
+			}
+
 			for connection in clientConnections {
-				connection.send(text)
+				connection.send(jsonString)
 			}
 		}
 		catch {
-			print("Incorrect message type.")
 			print(error)
 		}
-	}
-	
-	client.onClose.whenComplete { _ in
-		clientConnections.remove(client)
 	}
 }
 
