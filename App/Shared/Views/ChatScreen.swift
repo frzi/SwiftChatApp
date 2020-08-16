@@ -130,17 +130,17 @@ private struct ChatMessageRow: View {
  * All business logic is performed in this Observable Object.
  */
 private final class ChatScreenModel: ObservableObject {
-	private(set) var username: String?
-	private(set) var userID: UUID?
+	private var username: String?
+	private var userID: UUID?
 	
 	private var webSocketTask: URLSessionWebSocketTask?
 	
 	@Published private(set) var messages: [ReceivingChatMessage] = []
 
 	// MARK: - Connection
-	func connect(username: String, userID id: UUID) {
+	func connect(username: String, userID: UUID) {
 		self.username = username
-		self.userID = id
+		self.userID = userID
 
 		let url = URL(string: "ws://127.0.0.1:8080/chat")!
 		webSocketTask = URLSession.shared.webSocketTask(with: url)

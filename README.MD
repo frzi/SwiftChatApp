@@ -180,20 +180,20 @@ notice codes.vapor.application : Server starting on http://127.0.0.1:8080
 This means the server can successfully listen to incoming requests. This is great, because we now have a WebSocket server we can start connecting to!
 
 > #### I don't believe you?
-> If for whatever reason you have me confused with the 45th president of the United States and think I've been spewing nothing but heinous lies this whole time, you can test the server yourself!
+> If for whatever reason you have me confused with a certain president of the United States and think I've been spewing nothing but heinous lies this whole time, you can test the server yourself!
 >
 > Open up your favourite browser and make sure you're in an empty tab. (If it's Safari, you will need to enable [Developer mode](https://support.apple.com/guide/safari/sfri20948/mac) for this.) Open the _Inspector_ (`Cmd`+`Option`+`I`) and go to the _Console_. Type in 
 > ```js
 > new WebSocket('ws://localhost:8080/chat')`
 > ```
-> and hit Return. Now take a look at the Xcode console. If all went well, it should now show `Connected: WebSocketKit.WebSocket`!
+> and hit Return. Now take a look at the Xcode console. If all went well, it should now show `Connected: WebSocketKit.WebSocket`.
 >
 > ![testing in a browser](images/js-console.png)
 >
 > 😏😏😏😏
 
 #### ⚠️ **Important** ⚠️
-_The server is only accessible from your local machine. This means you cannot connect your iPhone/iPad to the server. Instead, we'll be using the Simulator in the following steps to test our chat app._  
+_The server is only accessible from your local machine. This means you cannot connect your physical iPhone/iPad to the server. Instead, we'll be using the Simulator in the following steps to test our chat app._  
 
 _To test the chat app on a physical device, some (small) extra steps need to be taken. Refer to [Extra: running on physical device](#extra-running-on-physical-device) section for more details._
 
@@ -252,6 +252,7 @@ struct ContentView: View {
 ```
 
 ![iPhone and iPad](images/first-chatscreen.png)
+> A blank canvas to make history with.  
 > Left: iPhone with dark appearance. Right: iPad with light appearance.
 
 What we have here:
@@ -695,14 +696,215 @@ _Et voilà..._
 -gif here-
 
 ## Add user information
-The home stretch!
-
 These messages are pretty lush... but it'd be even _lush-er_ if we knew who sent the messages and visually distinguish between received and sent messages.
 
 With each message we will also attach a username and a user identifier. Because a username isn't enough to identify a user, we need something unique. What if the user and everyone else's name was Patrick? We'd have an identity crisis and would be unable to distinguish between messages sent by Patrick and messages received by _a_ Patrick.
 
 As is tradition, we start with the server, it's the least amount of work.
 
+Open up `Models.swift` where we defined both `SubmittedChatMessage` and `ReceivingChatMessage`. Give both of these bad boys a `username: String` and `userID: UUID` property, like so:
+```swift
+struct SubmittedChatMessage: Decodable {
+	let message: String
+	let user: String // <- We
+	let userID: UUID // <- are
+}
+
+struct ReceivingChatMessage: Encodable, Identifiable {
+	let date = Date()
+	let id = UUID()
+	let message: String
+	let user: String // <- new
+	let userID: UUID // <- here
+}
+```
+Returning to `main.swift`, where you should be greeted with an error, change the initialization of `ReceivingChatMessage` with the following:
+```swift
+let outgoingMessage = ReceivingChatMessage(
+	message: incomingMessage.message,
+	user: incomingMessage.user,
+	userID: incomingMessage.userID
+)
+```
+And _that's it_! We're done with the server. It's just the app from here on out. The home stretch!
+
+In the app Xcode project, create a new Swift file called `UserInfo.swift`. Place the following code there:
+```swift
+import Combine
+import Foundation
+
+class UserInfo: ObservableObject {
+	let userID = UUID()
+	@Published var username = ""
+}
+```
+This will be our `EnvironmentObject` where we can store our username in. As always, the unique identifier is an automatically generated immutable UUID. Where does the username come from? The user will input this when opening the app, before being presented the chat screen.
+
+New file time: `SettingsScreen.swift`. This file will house the simple settings form:
+```swift
+import SwiftUI
+
+struct SettingsScreen: View {
+	@EnvironmentObject private var userInfo: UserInfo // 1
+	
+	private var isUsernameValid: Bool {
+		!userInfo.username.trimmingCharacters(in: .whitespaces).isEmpty // 2
+	}
+	
+	var body: some View {
+		Form {
+			Section(header: Text("Username")) {
+				TextField("E.g. John Applesheed", text: $userInfo.username) // 3
+
+				NavigationLink("Continue", destination: ChatScreen()) // 4
+					.disabled(!isUsernameValid)
+			}
+		}
+		.navigationTitle("Settings")
+	}
+}
+```
+1. The previously created `UserInfo` class will be accessible here as an `EnvironmentObject`.
+2. A simple validation to make sure the username isn't just whitespace.
+3. The `TextField` will directly write its contents into `userInfo.username`.
+4. The `NavigationLink` that will present `ChatScreen` when pressed. The button is disabled while the username is invalid. (Do you notice how we initialize `ChatScreen` in the `NavigationLink`? Had we made `ChatScreen` connect to the server in its `init()`, it would've done so _right now_!)
+
+If you wish you can add a little _panache_ to screen. 😉
+
+Since we're using SwiftUI's navigation features, we need to start off with a `NavigationView` somewhere. `ContentView` is the perfect spot for this. Change `ContentView`'s implementation as follows:
+
+```swift
+struct ContentView: View {
+	@StateObject private var userInfo = UserInfo() // 1
+	
+    var body: some View {
+		NavigationView {
+			SettingsScreen()
+		}
+		.environmentObject(userInfo) // 2
+		.navigationViewStyle(StackNavigationViewStyle()) // 3
+    }
+}
+```
+1. We initialize an instance of `UserInfo` and...
+2. ... pass it along as an `EnvironmentObject`, making it accessible to all succeeding views.
+3. This is just to make the app not use a columned navigation view on certain screen sizes.
+
+Now to send the data of `UserInfo` with the messages we send to the server. Go to `ChatScreenModel` (wherever you put it). At the top of the class add the following properties:
+```swift
+final class ChatScreenModel: ObservableObject {
+	private var username: String?
+	private var userID: UUID?
+
+	// the rest ...
+}
+```
+The `ChatModelScreen` should receive these values when connecting. It's not `ChatModelScreen`'s job to know where this information came from. If, in the future, we decide to change where both `username` and `userID` are stored, we can leave `ChatModelScreen` untouched.
+
+Change the `connect()` method to accept these new properties as arguments:
+```swift
+func connect(username: String, userID: UUID) {
+	self.username = username
+	self.userID = userID
+
+	// etc ...
+}
+```
+Finally, in `send(text:)`, we need to apply these new values to the `SubmittedChatMessage` we're sending to the server:
+```swift
+func send(text: String) {
+	guard let username = username, let userID = userID else { // Safety first!
+		return
+	}
+	
+	let message = SubmittedChatMessage(message: text, user: username, userID: userID)
+	// Everything else ...
+}
+```
+
+Aaaand that's it for `ChatScreenModel`. It's _finished_. 😙👌
+
+For the final time, open up `ChatScreen.swift`. At the top of `ChatScreen` add:
+```swift
+@EnvironmentObject private var userInfo: UserInfo
+```
+Don't forget to supply the `username` and `userID` to `ChatScreenModel` when the view appears:
+```swift
+private func onAppear() {
+	model.connect(username: userInfo.username, userID: userInfo.userID)
+}
+```
+Now, once again, as practiced: Lean back in that chair and look up at the ceiling. _What_ should the text messages look like? If you're in no mood for creative thinking, you can use the following View that represents a single received (and sent) message:
+
+```swift
+struct ChatMessageRow: View {
+	static private let dateFormatter: DateFormatter = {
+		let formatter = DateFormatter()
+		formatter.dateStyle = .none
+		formatter.timeStyle = .short
+		return formatter
+	}()
+	
+	let message: ReceivingChatMessage
+	let isUser: Bool
+	
+	var body: some View {
+		HStack {
+			if isUser {
+				Spacer()
+			}
+			
+			VStack(alignment: .leading, spacing: 6) {
+				HStack {
+					Text(message.user)
+						.fontWeight(.bold)
+						.font(.system(size: 12))
+					
+					Text(Self.dateFormatter.string(from: message.date))
+						.font(.system(size: 10))
+						.opacity(0.7)
+				}
+				
+				Text(message.message)
+			}
+			.foregroundColor(isUser ? .white : .black)
+			.padding(10)
+			.background(isUser ? Color.blue : Color(white: 0.95))
+			.cornerRadius(5)
+			
+			if !isUser {
+				Spacer()
+			}
+		}
+	}
+}
+```
+It's not particularly exciting looking. Here's what it looks like on an iPhone:
+![Chat message design](images/chats-iphone.png)
+(Remember how the server also sends the date of a message? It's finally put to use here!)
+
+Colors and positioning are based on the `isUser` property that's passed down by the parent. In this case, that parent is none other than `ChatScreen`. Because `ChatScreen` has access to the messages _as well_ as the `UserInfo`, it's there where the logic is placed to determine whether the message belongs to the user or not. 
+
+`ChatMessageRow` replaces the boring `Text` we used before to represent messages:
+```swift
+ScrollView {
+	ScrollViewReader{ proxy in
+		LazyVStack(spacing: 8) {
+			ForEach(model.messages) { message in
+				// This one right here 👇, officer.
+				ChatMessageRow(message: message, isUser: message.userID == userInfo.userID)
+					.id(message.id)
+			}
+		}
+		// etc.
+	}
+}
+```
+
+Welcome to the finish line! You've made it all the way here! By now you should have a primitive but fuctioning chat app, as well as a server handling the incoming and outgoing messages. All written in Swift!
+
+-final result-
+> Left: Tiny iPad with dark appearance. Right: Huge iPhone with light appearance.
 
 ## Looking back
 
