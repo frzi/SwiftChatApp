@@ -10,15 +10,14 @@ import Foundation
 import SwiftUI
 
 struct ChatScreen: View {
-	@AppStorage("id") private var userID = UUID().uuidString
-	@AppStorage("username") private var username = ""
+	@EnvironmentObject private var userInfo: UserInfo
 
 	@StateObject private var model = ChatScreenModel()
 	@State private var message = ""
 	
 	// MARK: - Events
 	private func onAppear() {
-		model.connect(username: username, userID: userID)
+		model.connect(username: userInfo.username, userID: userInfo.userID)
 	}
 	
 	private func onDisappear() {
@@ -48,10 +47,8 @@ struct ChatScreen: View {
 				ScrollViewReader{ proxy in
 					LazyVStack(spacing: 8) {
 						ForEach(model.messages) { message in
-							//ChatMessageRow(message: message, isUser: message.userID == userID)
-							Text(message.message)
+							ChatMessageRow(message: message, isUser: message.userID == userInfo.userID)
 								.id(message.id)
-								.font(.system(size: 20))
 						}
 					}
 					.padding(10)
@@ -134,14 +131,14 @@ private struct ChatMessageRow: View {
  */
 private final class ChatScreenModel: ObservableObject {
 	private(set) var username: String?
-	private(set) var userID: String?
+	private(set) var userID: UUID?
 	
 	private var webSocketTask: URLSessionWebSocketTask?
 	
 	@Published private(set) var messages: [ReceivingChatMessage] = []
 
 	// MARK: - Connection
-	func connect(username: String, userID id: String) {
+	func connect(username: String, userID id: UUID) {
 		self.username = username
 		self.userID = id
 

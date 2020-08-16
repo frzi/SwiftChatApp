@@ -10,7 +10,7 @@ import Foundation
 struct SubmittedChatMessage: Encodable {
 	let message: String
 	let user: String
-	let userID: String
+	let userID: UUID
 }
 
 struct ReceivingChatMessage: Decodable, Identifiable {
@@ -18,5 +18,5 @@ struct ReceivingChatMessage: Decodable, Identifiable {
 	let id: UUID
 	let message: String
 	let user: String
-	let userID: String
+	let userID: UUID
 }

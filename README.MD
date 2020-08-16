@@ -695,6 +695,14 @@ _Et voilà..._
 -gif here-
 
 ## Add user information
+The home stretch!
+
+These messages are pretty lush... but it'd be even _lush-er_ if we knew who sent the messages and visually distinguish between received and sent messages.
+
+With each message we will also attach a username and a user identifier. Because a username isn't enough to identify a user, we need something unique. What if the user and everyone else's name was Patrick? We'd have an identity crisis and would be unable to distinguish between messages sent by Patrick and messages received by _a_ Patrick.
+
+As is tradition, we start with the server, it's the least amount of work.
+
 
 ## Looking back
 
