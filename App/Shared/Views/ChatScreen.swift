@@ -26,8 +26,10 @@ struct ChatScreen: View {
 	}
 	
 	private func onCommit() {
-		model.send(text: message)
-		message = ""
+		if !message.isEmpty {
+			model.send(text: message)
+			message = ""
+		}
 	}
 	
 	private func scrollToLastMessage(proxy: ScrollViewProxy) {
@@ -129,10 +131,6 @@ private struct ChatMessageRow: View {
  * All business logic is performed in this Observable Object.
  */
 private final class ChatScreenModel: ObservableObject {
-	private static let decoder = JSONDecoder()
-	private static let encoder = JSONEncoder()
-	
-	// MARK: -
 	private(set) var username: String?
 	private(set) var userID: String?
 	
@@ -170,11 +168,11 @@ private final class ChatScreenModel: ObservableObject {
 	private func onMessage(message: URLSessionWebSocketTask.Message) {
 		if case .string(let text) = message {
 			guard let data = text.data(using: .utf8),
-				  let chatMessage = try? Self.decoder.decode(ReceivingChatMessage.self, from: data)
+				  let chatMessage = try? JSONDecoder().decode(ReceivingChatMessage.self, from: data)
 			else {
 				return
 			}
-			
+
 			DispatchQueue.main.async {
 				withAnimation(.spring()) {
 					self.messages.append(chatMessage)
@@ -191,7 +189,7 @@ private final class ChatScreenModel: ObservableObject {
 		}
 		
 		let message = SubmittedChatMessage(message: text, user: username, userID: userID)
-		guard let json = try? Self.encoder.encode(message),
+		guard let json = try? JSONEncoder().encode(message),
 			  let jsonString = String(data: json, encoding: .utf8)
 		else {
 			return

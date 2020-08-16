@@ -1,5 +1,5 @@
 # A simple chat app with SwiftUI and WebSockets - or: Swift in the back, Swift in the front!
-> Creating a very primitive chat app in SwiftUI, while using Swift and WebSockets to create the chat server. It's Swift all the way down!
+> Creating a very primitive chat app in SwiftUI, while using Swift and WebSockets to create the chat server. It's Swift from top to bottom, bay-bee!
 
 ## Index
 * [Introduction](#introduction)
@@ -73,7 +73,7 @@ To handle all the heavy lifting of setting up a server, we'll be using the [Vapo
 > Though we're making an iOS/macOS chat app in this tutorial, the server we're making can just as easily talk to other platforms with WebSockets. Indeed: if you want you could also make an Android and web version of this chat app, talking to the same server and allowing for communication between all platforms!
 
 > #### Vapor?
-> The internet is a complex series of tubes. Even responding to a simple HTTP request requires some serious amount of code. Luckily, experts in the field have developed open source web frameworks that do all the hard work for us for decades now, in various programming languages. [Vapor](https://github.com/vapor/vapor/) is one of them, written in Swift. It already comes with some WebSocket capabilities and it's **exactly** what we need.
+> The internet is a complex series of tubes. Even responding to a simple HTTP request requires some serious amount of code. Luckily, experts in the field have developed open source web frameworks that do all the hard work for us for decades now, in various programming languages. [Vapor](https://github.com/vapor/vapor/) is one of them, and it's written in Swift. It already comes with some WebSocket capabilities and it's **exactly** what we need.
 >
 > Vapor isn't the only Swift powered web framework though. [Kitura](https://github.com/IBM-Swift/Kitura) and [Perfect](https://github.com/PerfectlySoft/Perfect) are also well known frameworks. Though Vapor is arguably more active in its development.
 
@@ -440,6 +440,9 @@ Do note how we're generating the `date` and `id` on the server-side. This makes 
 > #### Timezones?
 > Swift's [`Date`](https://developer.apple.com/documentation/foundation/date) object always has [00:00:00 UTC 01-01-2001](https://developer.apple.com/documentation/foundation/nsdate) as absolute reference time. When initializing a `Date` or format one to string (e.g. via `DateFormatter`), the client's locality will be taken into consideration automatically. Adding or subtracting hours depending on the client's timezone.
 
+> #### UUID?
+> [**U**niversally **U**nique **Id**entifiers](https://en.wikipedia.org/wiki/Universally_unique_identifier) are globally regarded as acceptable values for identifiers.
+
 We also don't want the client to send multiple messages with the same unique identifier. Whether accidentally or pursposefully meliciously. Having the server generate this identifier is one extra layer of security and less possible sources of errors.
 
 Now then. When the server receives a message from a client, it should pass it along to every other client. This does, however, mean we have to keep track of every client that's connected.
@@ -532,7 +535,50 @@ struct ReceivingChatMessage: Decodable, Identifiable {
 	let message: String
 }
 ```
-Notice how the `Encodable` and `Decodable` protocols have been swapped. It only makes sense: in the app, we only encode `SubmittedChatMessage`, and only decode `ReceivingChatMessage`. The opposite of the server. We also removed the automatic initializations of `date` and `id`. The app has no business generating these.
+Notice how the `Encodable` and `Decodable` protocols have been swapped. It only makes sense: in the app, we only encode `SubmittedChatMessage` and only decode `ReceivingChatMessage`. The opposite of the server. We also removed the automatic initializations of `date` and `id`. The app has no business generating these.
+
+Okay, back to `ChatScreenModel` (whether it's in a separate file or at the bottom of `ChatScreen.swift`). 
+Add the top, but inside `ChatScreenModel` add the following instance property:
+```swift
+@Published private(set) var messages: [ReceivingChatMessage] = []
+```
+This where we'll store received messages. Thanks to `@Published`, the `ChatScreen` will know exactly when this array gets updated and will react to this change. `private(set)` makes sure only `ChatScreenModel` can update this property. (Afterall, it's the owner of the data. No other object has any business modifying it directly!)
+
+Still inside `ChatScreenModel`, add the following method:
+```swift
+func send(text: String) {	
+	let message = SubmittedChatMessage(message: text) // 1
+	guard let json = try? JSONEncoder().encode(message), // 2
+			let jsonString = String(data: json, encoding: .utf8)
+	else {
+		return
+	}
+	
+	webSocketTask?.send(.string(jsonString)) { error in // 3
+		if let error = error {
+			print("Error sending message", error) // 4
+		}
+	}
+}
+```
+It seems self-explanatory. But for consistency's sake:
+1. Create the payload we'll be sending to the server:  
+A `SubmittedChatMessage` that, for now, just holds the message.
+2. Turn our payload into a JSON string.
+3. Send the JSON string to the server.
+4. If any errors occurred, simply print the error.  
+Of course, in a real app you'd respond a bit more respectfully to such an error. 🙃
+
+Open `ChatScreen.swift` and add the following method to `ChatScreen`:
+```swift
+private func onCommit() {
+	if !message.isEmpty {
+		model.send(text: message)
+		message = ""
+	}
+}
+```
+This method will be called when the user either presses the submit button or when pressing Return on the keyboard. Though it'll only send the message if it _actually contains anything_.
 
 ## Add user information
 

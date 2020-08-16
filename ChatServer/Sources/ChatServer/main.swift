@@ -10,8 +10,6 @@ defer {
 	app.shutdown()
 }
 
-let decoder = JSONDecoder()
-let encoder = JSONEncoder()
 var clientConnections = Set<WebSocket>()
 
 app.webSocket("chat") { req, client in
@@ -30,14 +28,14 @@ app.webSocket("chat") { req, client in
 				return
 			}
 
-			let incomingMessage = try decoder.decode(SubmittedChatMessage.self, from: data)
+			let incomingMessage = try JSONDecoder().decode(SubmittedChatMessage.self, from: data)
 
 			let outgoingMessage = ReceivingChatMessage(
 				message: incomingMessage.message,
 				user: incomingMessage.user,
 				userID: incomingMessage.userID)
 			
-			let json = try encoder.encode(outgoingMessage)
+			let json = try JSONEncoder().encode(outgoingMessage)
 			
 			guard let jsonString = String(data: json, encoding: .utf8) else {
 				return
