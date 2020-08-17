@@ -17,9 +17,10 @@
 	* [Receiving client-side](#receiving-client-side)
 	* [Autoscrolling](#autoscrolling)
 * [Adding user information](#adding-user-information)
-* [Looking back](#looking-back)
+* [Recap](#recap)
 * [Final words](#final-words)
-* [Extra: running on physical device](#extra-running-on-physical-device)
+* [Final notes](#final-notes)
+* [Appendix A: running on physical device](#appendix-a-running-on-physical-device)
 
 ## Introduction
 In this tutorial we'll make a rather primitive, but functional chat app. The app will run on iOS or macOS - or both! The beauty of SwiftUI is how little effort it takes to make a multiplatform app.
@@ -907,13 +908,66 @@ ScrollView {
 }
 ```
 
-Welcome to the finish line! You've made it all the way here! By now you should have a primitive but fuctioning chat app, as well as a server handling the incoming and outgoing messages. All written in Swift!
+Welcome to the finish line! You've made it all the way here! For the final time, ▶️ run the app and chat away.
 
--final result-
+By now you should have a primitive - but fuctioning - chat app. As well as a server handling the incoming and outgoing messages. All written in Swift!
+
+Congrats! And thank you very much for reading! 🎊
+
+<br>
+
+![Final result](images/chat-final.gif)
+
 > Left: Tiny iPad with dark appearance. Right: Huge iPhone with light appearance.
 
-## Looking back
+
+## Recap
+Let's sum up our journey:
+- We created a server as a Swift Package
+- Vapor
+- WebSocket
+- Receive, parse and send
+- App
 
 ## Final words
+Of course, what we created here is only a fraction of a fraction of a complete, production ready chat app and server. We cut a lot of corners to save on time and complexity. Needless to say it should give a pretty basic understanding of how a chat app works.
 
-## Extra: running on physical device
+Consider the following features to, perhaps, implement yourself:  
+- ***Multiple channels***  
+Our server basically accounts for just one channel to chat in. Everyone who connects joins the same party. Modern chat software (e.g. Discord, Slack and Teams) all allow for multiple channels for people to talk in. They even have private chats!
+- ***Respectful autoscroll***  
+You may have noticed the scrollview now _always_ scrolls to the bottom whenever a message is received. This is seriously annoying for users who manually scrolled up to read earlier messages. A respectful chat app only scrolls to the bottom automatically _if the scrollview was already at the bottom_.
+- ***Splice the amount of messages in memory***  
+Currently, using the `ForEach` View, we iterate through _every_ message in memory. Modern chat software only keep track of a handful of messages to render, and only load in older messages once the user has scrolled up.
+- ***Server messages***  
+It's common courtesy to announce your arrival whenever you enter a party. A feature you see in all chat software are server-generated messages announcing people joining or leaving the party.
+
+## Final notes
+
+> ***That odd URLSessionWebSocketTask API***  
+> If you've ever worked with WebSockets before, you may share the opinion that Apple's API for WebSocket's are... quite non-traditional. You're certainly not alone on this. Having to constantly rebind the receive handler is just _odd_. If you think you're more comfortable using a more traditional WebSocket API for iOS and macOS, then I would certainly recommend [Starscream](https://github.com/daltoniam/Starscream). It's well tested, performant and works on older versions of iOS.
+
+> ***Bugs bugs bugs***  
+This tutorial was written using Xcode 12 beta 4 and iOS 14 beta 4. Bugs appear and disappear between each new beta version.
+
+<hr>
+
+## Appendix A: running on physical device
+The server not only runs on your local machine, it's only _accessible_ from your local machine. This isn't a problem when running the app in Simulator (or as macOS app on the same machine). But running the app on a physical device, or on a different Mac, the server will have to be made accessible in your local network.
+
+To do this, in `main.swift` of the server code, add the following line _directly after_ initializing the `Application` instance:
+```swift
+app.http.server.configuration.hostname = "0.0.0.0"
+```
+Now in `ChatScreenModel`, in the `connect(username:userID:)` method, you need to change the URL to match your machine's local IP:
+```swift
+let url = URL(string: "ws://127.0.0.1:8080/chat")!
+                          //^^this^^^
+```
+Your machine's local IP can be found in various ways. Personally I always just open _System Preferences > Network_, where the IP is directly shown and can be selected and copied.
+
+<br>
+<hr>
+<br>
+
+Thank you so much for reading! If you have any opinions on this piece, or thoughts for improvements, or found some errors, please, please, _please_ let me know! I will do my very best to keep improving this tutorial.  🙂
