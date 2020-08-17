@@ -6,7 +6,7 @@
 	* [Quick summary of what's to come](#quick-summary-of-whats-to-come)
 	* [Requirements](#requirements)
 * [Creating the server](#creating-the-server)
-	* [Setup Package.swift](#setup-package.swift)
+	* [Setup Package.swift](#setup-packageswift)
 	* [Writing some actual code](#writing-some-actual-code)
 * [Creating the app](#creating-the-app)
 	* [Connecting to the server](#connecting-to-the-server)
@@ -16,7 +16,7 @@
 	* [Sending client-side](#sending-client-side)
 	* [Receiving client-side](#receiving-client-side)
 	* [Autoscrolling](#autoscrolling)
-* [Add user information](#add-user-information)
+* [Adding user information](#adding-user-information)
 * [Looking back](#looking-back)
 * [Final words](#final-words)
 * [Extra: running on physical device](#extra-running-on-physical-device)
@@ -26,7 +26,7 @@ In this tutorial we'll make a rather primitive, but functional chat app. The app
 
 Of course, a chat app will have very little use without a server to talk to. Hence we'll be making a very primitive chat server as well, utilizing WebSockets. Everything will be built in Swift and run locally on your machine.
 
-This tutorial assumes you already have a bit of experience developing iOS/macOS apps using SwiftUI. Although concepts will be explained as we go, not everything will be covered in depth. Needless to say, if you type along and follow the steps, by the end of this tutorial you'll have a working chat app (for iOS and/or macOS), that communicates with a server that you have also made! You will also have a basic understanding of concepts like server-side Swift and WebSockets.
+This tutorial assumes you already have a bit of experience developing iOS/macOS apps using SwiftUI. Although concepts will be explained as we go, not everything will be covered in depth. Needless to say, if you type along and follow the steps, by the end of this tutorial you'll have a working chat app (for iOS and/or macOS), that communicates with a server that you also made! You will also have a basic understanding of concepts like server-side Swift and WebSockets.
 
 If none of that interests you, you can always scroll to the end and download the final source code!
 
@@ -104,7 +104,7 @@ Alright, let's add Vapor as a dependency. In `dependencies: []` (which should ha
 ```
 When saving the `Package.swift` file, Xcode should start automatically fetching the Vapor dependencies with verison `4.0.0` or newer. As well as all _its_ dependencies. 
 
-We just have to make one more adjustment to the file while Xcode is doing its thing: adding the dependency to our target. In `targets:` you will find a `.target(name: "ChatServer", dependencies: [])`. In that empty array, at the following:
+We just have to make one more adjustment to the file while Xcode is doing its thing: adding the dependency to our target. In `targets:` you will find a `.target(name: "ChatServer", dependencies: [])`. In that empty array, add the following:
 ```swift
 .product(name: "Vapor", package: "vapor")
 ```
@@ -114,7 +114,7 @@ _That's it_. Our `Package.swift` is done. We've described our Swift Package by t
 - To import the Vapor web framework dependency (and all its dependencies)
 - Link the Vapor dependency to our executable, making it accessible in our code
 
-The final `Package.swift` should look like:
+The final `Package.swift` should look like this(-ish):
 ```swift
 // swift-tools-version:5.3
 
@@ -180,11 +180,11 @@ notice codes.vapor.application : Server starting on http://127.0.0.1:8080
 This means the server can successfully listen to incoming requests. This is great, because we now have a WebSocket server we can start connecting to!
 
 > #### I don't believe you?
-> If for whatever reason you have me confused with a certain president of the United States and think I've been spewing nothing but heinous lies this whole time, you can test the server yourself!
+> If for whatever reason you think I've been spewing nothing but heinous lies this whole time, you can test the server yourself!
 >
-> Open up your favourite browser and make sure you're in an empty tab. (If it's Safari, you will need to enable [Developer mode](https://support.apple.com/guide/safari/sfri20948/mac) for this.) Open the _Inspector_ (`Cmd`+`Option`+`I`) and go to the _Console_. Type in 
+> Open up your favourite browser and make sure you're in an empty tab. (If it's Safari, you will need to enable [Developer mode](https://support.apple.com/guide/safari/sfri20948/mac) first.) Open the _Inspector_ (`Cmd`+`Option`+`I`) and go to the _Console_. Type in 
 > ```js
-> new WebSocket('ws://localhost:8080/chat')`
+> new WebSocket('ws://localhost:8080/chat')
 > ```
 > and hit Return. Now take a look at the Xcode console. If all went well, it should now show `Connected: WebSocketKit.WebSocket`.
 >
@@ -200,10 +200,10 @@ _To test the chat app on a physical device, some (small) extra steps need to be 
 ## Creating the app
 Though we're not done with the backend yet, it's time to move to the frontend. The chat app itself!
 
-In Xcode create a new project. This time, under _Multiplatform_ select _App_. Again, choose a beautiful name for your app and continue. (I chose _SwiftChat_. I agree, it's ***perfect*** 🌈.)
+In Xcode create a new project. This time, under _Multiplatform_ select _App_. Again, choose a beautiful name for your app and continue. (I chose _SwiftChat_. I agree, it's ***perfect*** 🌈)
 ![New SwiftUI App](images/create-app.png)
 
-The app does not rely on any external third-party frameworks or libraries. Indeed, everything we need and is available via `Foundation`, `Combine` and `SwiftUI` (in Xcode 12+).
+The app does not rely on any external third-party frameworks or libraries. Indeed, everything we need is available via `Foundation`, `Combine` and `SwiftUI` (in Xcode 12+).
 
 Let's start working on the chat screen immediately. Create a new Swift file and name it `ChatScreen.swift`. It doesn't matter whether you choose the _Swift File_ or the _SwiftUI View_ template. We're deleting everything in it regardless.
 
@@ -252,13 +252,13 @@ struct ContentView: View {
 ```
 
 ![iPhone and iPad](images/first-chatscreen.png)
-> A blank canvas to make history with.  
+> A blank canvas, for now.  
 > Left: iPhone with dark appearance. Right: iPad with light appearance.
 
 What we have here:
 1. A ScrollView where we will place all our messages in.
 2. The message box where the user can type in their message.
-3. A submit button to send the message (though later on users will also be able to send by pressing Return).
+3. A submit button to send the message (though later on users will also be able to submit by pressing Return).
 4. Disabling the submit button if the message is empty.
 
 If you wish to make different design choices, go right ahead. 🙂
@@ -317,10 +317,10 @@ Remember: the server runs locally on your machine (which means we use the IP `12
 5. We bind an 'on message' handler.  
 Whenever a message is received from the server, the method `onReceive(incoming:)` will be called. More on this later.
 6. Start the WebSocket connection.
-7. A public method to disconnect the connection (very important!).
+7. A public method to close the connection (very important!).
 8. Disconnecting the WebSocket connection.  
 With WebSockets, you have the option to inform the server _why_ a client disconnected. With optional additional data provided.
-8. Make sure we gracefully disconnect when the `ChatScreenModel` is released from memory.
+8. Make sure we gracefully disconnect when the `ChatScreenModel` is purged from memory.
 
 This is a great start. We now have a place where we can put all our WebSocket logic without cluttering the UI code. It's time to have `ChatScreen` communicate with `ChatScreenModel`.
 
@@ -691,11 +691,15 @@ The `ScrollViewReader` provides us with a `proxy` that we'll need very soon.
 4. Safely get the latest message.
 5. Call the `.scrollTo(_:anchor:)` method of the `ScrollViewProxy`. This tells the `ScrollView` to scroll to the View with the given identifier. We wrap this in `withAnimation {}` to animate the scrolling.
 
-_Et voilà..._
+_Et voilà..._  
 
--gif here-
+<br>
 
-## Add user information
+![Autscrolling](images/chat-autoscroll.gif)
+
+<br><br>
+
+## Adding user information
 These messages are pretty lush... but it'd be even _lush-er_ if we knew who sent the messages and visually distinguish between received and sent messages.
 
 With each message we will also attach a username and a user identifier. Because a username isn't enough to identify a user, we need something unique. What if the user and everyone else's name was Patrick? We'd have an identity crisis and would be unable to distinguish between messages sent by Patrick and messages received by _a_ Patrick.
@@ -880,8 +884,10 @@ struct ChatMessageRow: View {
 }
 ```
 It's not particularly exciting looking. Here's what it looks like on an iPhone:
+
 ![Chat message design](images/chats-iphone.png)
-(Remember how the server also sends the date of a message? It's finally put to use here!)
+
+(Remember how the server also sends the date of a message? Here it's used to display the time.)
 
 Colors and positioning are based on the `isUser` property that's passed down by the parent. In this case, that parent is none other than `ChatScreen`. Because `ChatScreen` has access to the messages _as well_ as the `UserInfo`, it's there where the logic is placed to determine whether the message belongs to the user or not. 
 
