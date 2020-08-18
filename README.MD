@@ -723,7 +723,7 @@ struct ReceivingChatMessage: Encodable, Identifiable {
 	let userID: UUID // <- here
 }
 ```
-Returning to `main.swift`, where you should be greeted with an error, change the initialization of `ReceivingChatMessage` with the following:
+Returning to `main.swift`, where you should be greeted with an error, change the initialization of `ReceivingChatMessage` to the following:
 ```swift
 let outgoingMessage = ReceivingChatMessage(
 	message: incomingMessage.message,
@@ -733,7 +733,7 @@ let outgoingMessage = ReceivingChatMessage(
 ```
 And _that's it_! We're done with the server. It's just the app from here on out. The home stretch!
 
-In the app Xcode project, create a new Swift file called `UserInfo.swift`. Place the following code there:
+In the app's Xcode project, create a new Swift file called `UserInfo.swift`. Place the following code there:
 ```swift
 import Combine
 import Foundation
@@ -795,7 +795,7 @@ struct ContentView: View {
 2. ... pass it along as an `EnvironmentObject`, making it accessible to all succeeding views.
 3. This is just to make the app not use a columned navigation view on certain screen sizes.
 
-Now to send the data of `UserInfo` with the messages we send to the server. Go to `ChatScreenModel` (wherever you put it). At the top of the class add the following properties:
+Now to send the data of `UserInfo` along with the messages we send to the server. Go to `ChatScreenModel` (wherever you put it). At the top of the class add the following properties:
 ```swift
 final class ChatScreenModel: ObservableObject {
 	private var username: String?
@@ -966,8 +966,10 @@ let url = URL(string: "ws://127.0.0.1:8080/chat")!
 ```
 Your machine's local IP can be found in various ways. Personally I always just open _System Preferences > Network_, where the IP is directly shown and can be selected and copied.
 
+_It should be noted that the success rate of this varies between networks. There are a lot of factors (like security) that prevent this from working._
+
 <br>
 <hr>
 <br>
 
-Thank you so much for reading! If you have any opinions on this piece, or thoughts for improvements, or found some errors, please, please, _please_ let me know! I will do my very best to keep improving this tutorial.  🙂
+Thank you so much for reading! If you have any opinions on this piece, thoughts for improvements, or found some errors, please, please, _please_ let me know! I will do my very best to continuously improve this tutorial.  🙂

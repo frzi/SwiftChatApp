@@ -139,6 +139,10 @@ private final class ChatScreenModel: ObservableObject {
 
 	// MARK: - Connection
 	func connect(username: String, userID: UUID) {
+		guard webSocketTask == nil else {
+			return
+		}
+
 		self.username = username
 		self.userID = userID
 
