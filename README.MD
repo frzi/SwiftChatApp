@@ -914,6 +914,8 @@ By now you should have a primitive - but fuctioning - chat app. As well as a ser
 
 Congrats! And thank you very much for reading! 🎊
 
+You can download the final code from [Github](https://github.com/frzi/SwiftChatApp).
+
 <br>
 
 ![Final result](images/chat-final.gif)
