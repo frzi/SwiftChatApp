@@ -18,7 +18,6 @@ app.webSocket("chat") { req, client in
 	clientConnections.insert(client)
 	
 	client.onClose.whenComplete { _ in
-		print("Disconnected:", client)
 		clientConnections.remove(client)
 	}
 	

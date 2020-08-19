@@ -1,6 +1,8 @@
 # A simple chat app with SwiftUI and WebSockets - or: Swift in the back, Swift in the front!
 > Creating a very primitive chat app in SwiftUI, while using Swift and WebSockets to create the chat server. It's Swift from top to bottom, bay-bee!
 
+![The chat app we will be making](images/hero.png)
+
 ## Index
 * [Introduction](#introduction)
 	* [Quick summary of what's to come](#quick-summary-of-whats-to-come)
@@ -40,12 +42,12 @@ Most of our time will be spent working on the app, but we'll be going back and f
 
 ### Requirements
 - macOS 10.15+
-- Xcode 12 beta 4+  
+- Xcode 12 beta 5+  
 
 _Optional_
 - macOS 11 beta  
 (if you want to run the app on macOS)
-- iPhone/iPad running iOS beta 14  
+- iPhone/iPad running iOS 14 beta 5+  
 (if you want to run the app on a physical device)
 
 
@@ -90,7 +92,7 @@ Under `products:`, remove the following value:
 ```swift
 .executable(name: "ChatServer", targets: ["ChatServer"])
 ```
-Afterall, our server isn't a Library. But a stand-alone executable, rather. We should also define the platforms (and minimum version) we expect our server to run on. This can be done by adding `platforms: [.macOS(v10_15)]` under `name: "ChatServer"`:
+After all, our server isn't a Library. But a stand-alone executable, rather. We should also define the platforms (and minimum version) we expect our server to run on. This can be done by adding `platforms: [.macOS(v10_15)]` under `name: "ChatServer"`:
 ```swift
 	name: "ChatServer",
 	platforms: [
@@ -141,8 +143,6 @@ let package = Package(
 	]
 )
 ```
-
-https://gist.github.com/frzi/0bcdfddc3583f1720431262181f4738b#file-final-package-swift
 
 Now, it's finally time for...
 
@@ -267,7 +267,7 @@ If you wish to make different design choices, go right ahead. 🙂
 ### Connecting to the server
 Now let's start working on some non-UI related logic: connecting to the very server we just made.
 
-_SwiftUI_, together with the _Combine_ framework, provides developers with tools to implement [Seperation of Concerns](https://en.wikipedia.org/wiki/Separation_of_concerns) effortlessly in their code. Using the `ObservableObject` protocol and `@StateObject` (or `@ObservedObject`) property wrappers we can implement non-UI logic (referred to as [_Business Logic_](https://en.wikipedia.org/wiki/Business_logic)) in a separate place. As things should be! Afterall, the only thing the UI should care about is displaying data to the user and reacting to user input. It shouldn't care where the data comes from, or how it's manipulated.
+_SwiftUI_, together with the _Combine_ framework, provides developers with tools to implement [Seperation of Concerns](https://en.wikipedia.org/wiki/Separation_of_concerns) effortlessly in their code. Using the `ObservableObject` protocol and `@StateObject` (or `@ObservedObject`) property wrappers we can implement non-UI logic (referred to as [_Business Logic_](https://en.wikipedia.org/wiki/Business_logic)) in a separate place. As things should be! After all, the only thing the UI should care about is displaying data to the user and reacting to user input. It shouldn't care where the data comes from, or how it's manipulated.
 
 Coming from a [React](https://reactjs.org/) background, this luxury is something I'm incredibly envious of.
 
@@ -544,7 +544,7 @@ Add the top, but inside `ChatScreenModel` add the following instance property:
 ```swift
 @Published private(set) var messages: [ReceivingChatMessage] = []
 ```
-This where we'll store received messages. Thanks to `@Published`, the `ChatScreen` will know exactly when this array gets updated and will react to this change. `private(set)` makes sure only `ChatScreenModel` can update this property. (Afterall, it's the owner of the data. No other object has any business modifying it directly!)
+This where we'll store received messages. Thanks to `@Published`, the `ChatScreen` will know exactly when this array gets updated and will react to this change. `private(set)` makes sure only `ChatScreenModel` can update this property. (After all, it's the owner of the data. No other object has any business modifying it directly!)
 
 Still inside `ChatScreenModel`, add the following method:
 ```swift
@@ -640,7 +640,7 @@ Nearly there!
 
 Check back in on `ChatScreen.swift`. See that empty `ScrollView`? We can _finally_ populate it with messages:
 ```swift
-ScrollView{
+ScrollView {
 	LazyVStack(spacing: 8) {
 		ForEach(model.messages) { message in
 			Text(message.message)
@@ -938,17 +938,17 @@ Our server basically accounts for just one channel to chat in. Everyone who conn
 - ***Respectful autoscroll***  
 You may have noticed the scrollview now _always_ scrolls to the bottom whenever a message is received. This is seriously annoying for users who manually scrolled up to read earlier messages. A respectful chat app only scrolls to the bottom automatically _if the scrollview was already at the bottom_.
 - ***Splice the amount of messages in memory***  
-Currently, using the `ForEach` View, we iterate through _every_ message in memory. Modern chat software only keep track of a handful of messages to render, and only load in older messages once the user has scrolled up.
+Currently, using the `ForEach` View, we iterate through _every_ message in memory. Modern chat software only keep track of a handful of messages to render, and only load in older messages once the user scrolls up.
 - ***Server messages***  
 It's common courtesy to announce your arrival whenever you enter a party. A feature you see in all chat software are server-generated messages announcing people joining or leaving the party.
 
 ## Final notes
 
 > ***That odd URLSessionWebSocketTask API***  
-> If you've ever worked with WebSockets before, you may share the opinion that Apple's API for WebSocket's are... quite non-traditional. You're certainly not alone on this. Having to constantly rebind the receive handler is just _odd_. If you think you're more comfortable using a more traditional WebSocket API for iOS and macOS, then I would certainly recommend [Starscream](https://github.com/daltoniam/Starscream). It's well tested, performant and works on older versions of iOS.
+> If you've ever worked with WebSockets before, you may share the opinion that Apple's API for WebSocket's are quite... non-traditional. You're certainly not alone on this. Having to constantly rebind the receive handler is just _odd_. If you think you're more comfortable using a more traditional WebSocket API for iOS and macOS then I would certainly recommend [Starscream](https://github.com/daltoniam/Starscream). It's well tested, performant and works on older versions of iOS.
 
 > ***Bugs bugs bugs***  
-This tutorial was written using Xcode 12 beta 4 and iOS 14 beta 4. Bugs appear and disappear between each new beta version.
+This tutorial was written using Xcode 12 beta 5 and iOS 14 beta 5. Bugs appear and disappear between each new beta version.
 
 <hr>
 
@@ -966,10 +966,10 @@ let url = URL(string: "ws://127.0.0.1:8080/chat")!
 ```
 Your machine's local IP can be found in various ways. Personally I always just open _System Preferences > Network_, where the IP is directly shown and can be selected and copied.
 
-_It should be noted that the success rate of this varies between networks. There are a lot of factors (like security) that prevent this from working._
+_It should be noted that the success rate of this varies between networks. There are a lot of factors (like security) that could prevent this from working._
 
 <br>
 <hr>
 <br>
 
-Thank you so much for reading! If you have any opinions on this piece, thoughts for improvements, or found some errors, please, please, _please_ let me know! I will do my very best to continuously improve this tutorial.  🙂
+Thank you so much for reading! If you have any opinions on this piece, thoughts for improvements, or found some errors, please, please, _please_ let me know! I will do my very best to continuously improve this tutorial. 🙂
