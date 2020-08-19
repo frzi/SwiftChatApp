@@ -923,11 +923,13 @@ Congrats! And thank you very much for reading! 🎊
 
 ## Recap
 Let's sum up our journey:
-- We created a server as a Swift Package
-- Vapor
-- WebSocket
-- Receive, parse and send
-- App
+- We created a server as a Swift Package executable.
+- We used the Vapor web framework to listen to WebSocket connections.
+- We programmed the server to receive, parse and send payloads to connected clients.
+- We created a basic SwiftUI to send and render messages.
+- We used the provided WebSocket APIs in _Foundation_ to provide the communication with the server.
+
+All that while staying within the Swift ecosystem. No different programming languages, no [Cocoapods](https://cocoapods.org/) or anything.
 
 ## Final words
 Of course, what we created here is only a fraction of a fraction of a complete, production ready chat app and server. We cut a lot of corners to save on time and complexity. Needless to say it should give a pretty basic understanding of how a chat app works.
