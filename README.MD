@@ -84,6 +84,8 @@ To handle all the heavy lifting of setting up a server, we'll be using the [Vapo
 
 Xcode should open the `Package.swift` file by default. This is where we put general information and requirements of our Swift Package. 
 
+Before we do that though, look in the `Sources/ChatServer` folder. It should have a `ChatServer.swift` file. We need to rename this to `main.swift`. Once that's done, return to `Package.swift`.
+
 Under `products:`, remove the following value:
 ```swift
 .library(name: "ChatServer", targets: ["ChatServer"])
@@ -226,7 +228,6 @@ struct ChatScreen: View {
 			HStack {
 				TextField("Message", text: $message) // 2
 					.padding(10)
-					.keyboardType(.webSearch)
 					.background(Color.secondary.opacity(0.2))
 					.cornerRadius(5)
 				
@@ -931,7 +932,7 @@ Let's sum up our journey:
 - We created a basic SwiftUI to send and render messages.
 - We used the provided WebSocket APIs in _Foundation_ to provide the communication with the server.
 
-All that while staying within the Swift ecosystem. No different programming languages, no [Cocoapods](https://cocoapods.org/) or anything.
+All that while completely staying within the Swift ecosystem. No extra programming languages, no [Cocoapods](https://cocoapods.org/) or anything.
 
 ## Final words
 Of course, what we created here is only a fraction of a fraction of a complete, production ready chat app and server. We cut a lot of corners to save on time and complexity. Needless to say it should give a pretty basic understanding of how a chat app works.

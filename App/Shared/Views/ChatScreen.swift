@@ -62,7 +62,6 @@ struct ChatScreen: View {
 			HStack {
 				TextField("Message", text: $message, onEditingChanged: { _ in }, onCommit: onCommit)
 					.padding(10)
-					.keyboardType(.webSearch)
 					.background(Color.secondary.opacity(0.2))
 					.cornerRadius(5)
 				
