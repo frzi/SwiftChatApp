@@ -446,7 +446,7 @@ Do note how we're generating the `date` and `id` on the server-side. This makes 
 > #### UUID?
 > [**U**niversally **U**nique **Id**entifiers](https://en.wikipedia.org/wiki/Universally_unique_identifier) are globally regarded as acceptable values for identifiers.
 
-We also don't want the client to send multiple messages with the same unique identifier. Whether accidentally or pursposefully meliciously. Having the server generate this identifier is one extra layer of security and less possible sources of errors.
+We also don't want the client to send multiple messages with the same unique identifier. Whether accidentally or purposefully maliciously. Having the server generate this identifier is one extra layer of security and less possible sources of errors.
 
 Now then. When the server receives a message from a client, it should pass it along to every other client. This does, however, mean we have to keep track of every client that's connected.
 
@@ -521,10 +521,10 @@ Yes, this includes sending it to the original sender as well.
 > #### Why send it back?
 > We can use this as a confirmation that the message was, in fact, received sucessfully from the client. The app will receive back the message just like it'd receive any other message. This will prevent us from having to write additional code later on.
 
-Done! The server is ready to recieve messages and pass them along to other connected clients. Run the server and let it idle in the background, as we continue with the app!
+Done! The server is ready to receive messages and pass them along to other connected clients. Run the server and let it idle in the background, as we continue with the app!
 
 ### Sending client-side
-Rmemeber those `SubmittedChatMessage` and `ReceivingChatMessage` structs we made for the server? We need them for the app as well. Create a new Swift file and name it `Models.swift`. Though you could just copy-paste the implementations, they will require a bit of modification:
+Rememeber those `SubmittedChatMessage` and `ReceivingChatMessage` structs we made for the server? We need them for the app as well. Create a new Swift file and name it `Models.swift`. Though you could just copy-paste the implementations, they will require a bit of modification:
 ```swift
 import Foundation
 
@@ -595,7 +595,7 @@ Button(action: onCommit) {
 ```
 When the Return key is pressed while the `TextField` is focused, `onCommit` will be called. Same goes for when the `Button` is pressed by the user. `TextField` also requires an `onEditingChanged` argument - but we discard that by giving it an empty closure.
 
-Now is the time to start testing what we have. Make sure the server is still running in the background. Place some breakpoints in the `client.onText` closure (where the server reads incoming messages) in `main.swift` of the server. Run the app and send a message. The breakpoint(s) in `main.swift` _should_ be hit upon receiving a message from the app. If it did, 🎊 _~lush~_! 🎊 If not, well... retrace your steps and start debugging!
+Now is the time to start testing what we have. Make sure the server is still running in the background. Place some breakpoints in the `client.onText` closure (where the server reads incoming messages) in `main.swift` of the server. Run the app and send a message. The breakpoint(s) in `main.swift` _should_ be hit upon receiving a message from the app. If it did, 🎊 _lush_! 🎊 If not, well... retrace your steps and start debugging!
 
 ### Receiving client-side
 Sending messages is cute and all. But what about receiving them? (Well, technically we are receiving them, just never reacting to them.) Right you are!
@@ -663,7 +663,7 @@ Remember, the server generates a unique identifier for each message. We can fina
 In `ChatScreen`, turn the `ScrollView` into this beauty:
 ```swift
 ScrollView {
-	ScrollViewReader{ proxy in // 1
+	ScrollViewReader { proxy in // 1
 		LazyVStack(spacing: 8) {
 			ForEach(model.messages) { message in
 				Text(message.message)
@@ -783,7 +783,7 @@ Since we're using SwiftUI's navigation features, we need to start off with a `Na
 struct ContentView: View {
 	@StateObject private var userInfo = UserInfo() // 1
 	
-    var body: some View {
+	var body: some View {
 		NavigationView {
 			SettingsScreen()
 		}
@@ -896,7 +896,7 @@ Colors and positioning are based on the `isUser` property that's passed down by 
 `ChatMessageRow` replaces the boring `Text` we used before to represent messages:
 ```swift
 ScrollView {
-	ScrollViewReader{ proxy in
+	ScrollViewReader { proxy in
 		LazyVStack(spacing: 8) {
 			ForEach(model.messages) { message in
 				// This one right here 👇, officer.

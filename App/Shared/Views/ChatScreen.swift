@@ -68,9 +68,11 @@ struct ChatScreen: View {
 				Button(action: onCommit) {
 					Image(systemName: "arrowshape.turn.up.right")
 						.font(.system(size: 20))
+						.padding(6)
 				}
-				.padding()
+				.cornerRadius(5)
 				.disabled(message.isEmpty)
+				.hoverEffect(.highlight)
 			}
 			.padding()
 		}
