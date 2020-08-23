@@ -198,7 +198,7 @@ This means the server can successfully listen to incoming requests. This is grea
 #### ⚠️ **Important** ⚠️
 _The server is only accessible from your local machine. This means you cannot connect your physical iPhone/iPad to the server. Instead, we'll be using the Simulator in the following steps to test our chat app._  
 
-_To test the chat app on a physical device, some (small) extra steps need to be taken. Refer to [Extra: running on physical device](#extra-running-on-physical-device) section for more details._
+_To test the chat app on a physical device, some (small) extra steps need to be taken. Refer to [Appendix A](#appendix-a-running-on-physical-device)._
 
 ## Creating the app
 Though we're not done with the backend yet, it's time to move to the frontend. The chat app itself!
@@ -953,7 +953,7 @@ It's common courtesy to announce your arrival whenever you enter a party. A feat
 > If you've ever worked with WebSockets before, you may share the opinion that Apple's API for WebSocket's are quite... non-traditional. You're certainly not alone on this. Having to constantly rebind the receive handler is just _odd_. If you think you're more comfortable using a more traditional WebSocket API for iOS and macOS then I would certainly recommend [Starscream](https://github.com/daltoniam/Starscream). It's well tested, performant and works on older versions of iOS.
 
 > ***Bugs bugs bugs***  
-This tutorial was written using Xcode 12 beta 5 and iOS 14 beta 5. Bugs appear and disappear between each new beta version.
+This tutorial was written using Xcode 12 beta 5 and iOS 14 beta 5. Bugs appear and disappear between each new beta version. It is unfortunately impossible to predict what will and what won't work in future (beta) releases.
 
 <hr>
 
