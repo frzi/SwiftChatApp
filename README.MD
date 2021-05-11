@@ -708,7 +708,7 @@ With each message we will also attach a username and a user identifier. Because 
 
 As is tradition, we start with the server, it's the least amount of work.
 
-Open up `Models.swift` where we defined both `SubmittedChatMessage` and `ReceivingChatMessage`. Give both of these bad boys a `username: String` and `userID: UUID` property, like so:
+Open up `Models.swift` where we defined both `SubmittedChatMessage` and `ReceivingChatMessage`. Give both of these bad boys a `user: String` and `userID: UUID` property, like so:
 ```swift
 struct SubmittedChatMessage: Decodable {
 	let message: String
@@ -724,6 +724,8 @@ struct ReceivingChatMessage: Encodable, Identifiable {
 	let userID: UUID // <- here
 }
 ```
+___(Don’t forget to update the Models.swift file in the app’s project as well!)___
+
 Returning to `main.swift`, where you should be greeted with an error, change the initialization of `ReceivingChatMessage` to the following:
 ```swift
 let outgoingMessage = ReceivingChatMessage(
